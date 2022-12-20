@@ -5,9 +5,11 @@ import torchvision.datasets as datasets
 import torchvision.transforms as transforms
 import winsound
 
+from random import seed
+
 # --- Hyper Parameters ---
-BATCH_SIZE = 500
-EPOCHS = 15
+BATCH_SIZE = 64  # Best so far: ==
+EPOCHS = 35  # Best so far: ==  # 50 epochs achieved lower accuracy on the test set
 
 
 def fetch_CIFAR10_data():
@@ -47,65 +49,77 @@ class ConvNet(nn.Module):
     def __init__(self):
         super(ConvNet, self).__init__()
         # CIFAR10 images are 32*32
-        self.conv1 = nn.Conv2d(3, 9, kernel_size=3, padding=1)    # in_dimension = 32*32, out_dimension = 32*32
-        self.pool1 = nn.MaxPool2d(2, 2)                           # in_dimension = 32*32, out_dimension = 16*16
-        self.conv2 = nn.Conv2d(9, 12, kernel_size=3, padding=1)   # in_dimension = 16*16, out_dimension = 16*16
-        self.pool2 = nn.MaxPool2d(2, 2)                           # in_dimension = 16*16, out_dimension = 8*8
-        self.conv3 = nn.Conv2d(12, 15, kernel_size=3, padding=1)  # in_dimension = 8*8, out_dimension = 8*8
-        self.pool3 = nn.MaxPool2d(2, 2)                           # in_dimension = 8*8, out_dimension = 4*4
-        self.conv4 = nn.Conv2d(15, 20, kernel_size=3, padding=1)  # in_dimension = 4*4, out_dimension = 4*4
-        self.fc1 = nn.Linear(20*4*4, 100)
-        self.fc2 = nn.Linear(100, 75)
-        self.dropout1 = nn.Dropout(p=0.5)
-        self.fc3 = nn.Linear(75, 10)
+        # Number of parameters in a Conv layer:
+        # (width of the filter * height of the filter * number of filters in the previous layer+1)*number of filters
+
+        # Best attempt so far - 58.71% on the train set, 74.33% on the test set
+        self.conv1 = nn.Conv2d(3, 16, kernel_size=3, padding=1)  # in_dimension = 32*32, out_dimension = 32*32
+        self.conv2 = nn.Conv2d(16, 32, kernel_size=3, padding=1)  # in_dimension = 32*32, out_dimension = 32*32
+        self.pool1 = nn.MaxPool2d(2, 2)  # in_dimension = 32*32, out_dimension = 16*16
+        self.batchnorm1 = nn.BatchNorm2d(32)
+
+        self.conv3 = nn.Conv2d(32, 48, kernel_size=3, padding=1)  # in_dimension = 16*16, out_dimension = 16*16
+        self.pool2 = nn.MaxPool2d(2, 2)  # in_dimension = 16*16, out_dimension = 8*8
+        self.batchnorm2 = nn.BatchNorm2d(48)
+
+        self.dropout1 = nn.Dropout(p=0.3)
+        self.fc = nn.Linear(48 * 8 * 8, 10)
+        self.dropout2 = nn.Dropout(p=0.3)
+
         self.logsoftmax = nn.LogSoftmax(dim=1)
 
     def forward(self, x):
-        x = self.pool1(F.relu(self.conv1(x)))
-        x = self.pool2(F.relu(self.conv2(x)))
-        x = self.pool3(F.relu(self.conv3(x)))
-        x = F.relu(self.conv4(x))
-        x = x.view(-1, 20*4*4)
-        x = F.relu(self.fc1(x))
+        # Best attempt so far - 58.71% on the train set, 74.33% on the test set
+        x = self.conv1(x)
+        x = self.batchnorm1(self.pool1(F.relu(self.conv2(x))))
+        x = self.batchnorm2(self.pool2(F.relu(self.conv3(x))))
+        x = x.view(-1, 48 * 8 * 8)
         x = self.dropout1(x)
-        x = self.fc2(x)
+        x = self.fc(x)
+        x = self.dropout2(x)
         return self.logsoftmax(x)
 
 
 def main():
+    # Setting seed for reproducibility
+    seed(1)
+
     # Fetching CIFAR10 dataset
     train_dataset, train_loader, test_dataset, test_loader = fetch_CIFAR10_data()
 
     cnn = ConvNet()
 
     # Loss and Optimizer
-    criterion = nn.NLLLoss()
-    optimizer = torch.optim.Adam(cnn.parameters())
+    # criterion = nn.NLLLoss()
+    # optimizer = torch.optim.Adam(cnn.parameters())
 
     print(f'Number of parameters: {sum(param.numel() for param in cnn.parameters())}')
 
     # Train the Model
-    # cnn.train()
     for i in range(EPOCHS):
         print(f"Epoch {i + 1}/{EPOCHS}...", end=' ')
         correct, total = 0, 0
         for j, (train_images, train_labels) in enumerate(train_loader):
-            # Forward + Backward + Optimize
+            cnn.train()
+            criterion = nn.NLLLoss()
+            optimizer = torch.optim.Adam(cnn.parameters())
             optimizer.zero_grad()
             train_outputs = cnn(train_images)
-            train_predictions = torch.argmax(train_outputs, dim=1)
             loss = criterion(train_outputs, train_labels)
             loss.backward()
             optimizer.step()
 
+            # Calculate epoch's accuracy
+            train_predictions = torch.argmax(train_outputs, dim=1)
             total += train_labels.size(0)
             correct += (train_predictions == train_labels).sum().item()
 
         print(f"Accuracy: {round(100 * (correct / total), 3)}%")
 
-    # cnn.eval()
+    # Evaluation
     correct, total = 0, 0
     for (test_images, test_labels) in test_loader:
+        cnn.eval()
         test_outputs = cnn(test_images)
         test_predictions = torch.argmax(test_outputs, dim=1)
         total += test_labels.size(0)
