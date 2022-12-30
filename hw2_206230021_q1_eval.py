@@ -16,6 +16,8 @@ def evaluate_model_q1() -> int:
     Loads CIFAR10's test set and the trained CNN network, and returns the average error on the test set
     :return: Average error rate
     """
+    # TODO: Implement this function
+    pass
 
 
 def main():
