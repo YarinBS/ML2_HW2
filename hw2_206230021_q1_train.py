@@ -125,11 +125,11 @@ def train_model_q1():
     test_losses, test_errors = [], []
 
     # Train the Model
+    cnn.train()
     for i in range(EPOCHS):
         print(f"Epoch {i + 1}/{EPOCHS}:", end=' ')
 
         correct, total = 0, 0
-        cnn.train()
         cumulative_train_loss = 0
         for j, (train_images, train_labels) in enumerate(train_loader):
             optimizer.zero_grad()
@@ -172,7 +172,7 @@ def train_model_q1():
         test_errors.append(1 - (correct / total))
 
         eval_loss = cumulative_eval_loss / len(test_loader)
-        test_losses.append(eval_loss)
+        test_losses.append(eval_loss.item())
 
         acc_counter += 1
 
@@ -272,7 +272,7 @@ def main():
     cnn = train_model_q1()
 
     # Save model
-    torch.save(cnn.state_dict(), "q1_model")
+    torch.save(cnn.state_dict(), "q1_model.pkl")
 
 
 if __name__ == '__main__':
