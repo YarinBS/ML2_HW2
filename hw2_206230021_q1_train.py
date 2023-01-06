@@ -85,7 +85,7 @@ def plot_convergence(epochs: int, train_list: list, test_list: list, mode: str) 
     plt.xlabel("Epochs")
     plt.ylabel(f"{mode.capitalize()}")
     plt.title(f"{mode.capitalize()} over epochs")
-    plt.savefig(f"./plots/{mode.capitalize()} over epochs.png")
+    plt.savefig(f"{mode.capitalize()} over epochs.png")
     plt.show()
 
 
@@ -125,10 +125,11 @@ def train_model_q1():
     test_losses, test_errors = [], []
 
     # Train the Model
-    cnn.train()
+
     for i in range(EPOCHS):
         print(f"Epoch {i + 1}/{EPOCHS}:", end=' ')
 
+        cnn.train()
         correct, total = 0, 0
         cumulative_train_loss = 0
         for j, (train_images, train_labels) in enumerate(train_loader):

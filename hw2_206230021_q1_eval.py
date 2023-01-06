@@ -33,7 +33,7 @@ def evaluate_model_q1():
 
     acc = 100 * correct / total
     error = 100 * (1 - (correct / total))
-    print(f"Accuracy: {acc}, Error: {error}%")
+    print(f"Accuracy: {acc}%, Error: {error}%")
     return error
 
 
